@@ -52,8 +52,31 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      # Debug: what kills the aarch64 build while it exports the layers.
+      - name: Runner resources before the build
+        run: |
+          df -h
+          free -h
+          nproc
+          docker version
+          docker info
+          sudo du -sh /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache 2>&1 || true
       - name: make image
-        run: make image VERSION=0.0.0 ARCH=${{ matrix.arch }}
+        run: |
+          while sleep 15; do
+              date -u +%T
+              df -h / /var/lib/docker /var/lib/containerd 2>&1
+              free -m
+          done &
+          make image VERSION=0.0.0 ARCH=${{ matrix.arch }}
+      - name: Runner resources after a failed build
+        if: failure()
+        run: |
+          df -h
+          free -h
+          docker system df || true
+          sudo dmesg --ctime | tail -n 100
+          sudo journalctl --no-pager -n 100 -u docker -u containerd
       - name: Smoke test
         run: |
           docker run --rm brescaos:0.0.0-${{ matrix.arch }} sh -c '

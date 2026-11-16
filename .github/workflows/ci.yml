@@ -61,6 +61,16 @@ jobs:
           docker version
           docker info
           sudo du -sh /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache 2>&1 || true
+      # Experiment: export the layers from containerd's snapshots instead of
+      # overlay2's, whose diff of every layer fills dockerd's memory.
+      - name: Use containerd's image store
+        run: |
+          daemon_config=/etc/docker/daemon.json
+          sudo cat "$daemon_config" || echo '{}' | sudo tee "$daemon_config"
+          sudo jq '.features["containerd-snapshotter"] = true' "$daemon_config" > daemon.json
+          sudo mv daemon.json "$daemon_config"
+          sudo systemctl restart docker
+          docker info --format 'Storage driver: {{.Driver}} {{.DriverStatus}}'
       - name: make image
         run: |
           while sleep 15; do

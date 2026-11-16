@@ -67,6 +67,8 @@ jobs:
               date -u +%T
               df -h / /var/lib/docker /var/lib/containerd 2>&1
               free -m
+              ps -eo rss,comm --sort=-rss | head -n 6
+              grep -E '^(AnonPages|Slab|SUnreclaim):' /proc/meminfo
           done &
           make image VERSION=0.0.0 ARCH=${{ matrix.arch }}
       - name: Runner resources after a failed build
